@@ -1,7 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Net;
+using System.Threading.Tasks;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Soenneker.Extensions.String;
+using Soenneker.Extensions.Task;
 
 namespace Soenneker.Extensions.HttpRequestDatas;
 
@@ -46,6 +50,16 @@ public static class HttpRequestDataExtension
         // Slice after "Bearer " and trim surrounding whitespace.
         token = span.Beyond(_bearerPrefix.Length).Trim();
         return !token.IsEmpty;
+    }
+
+    public static async ValueTask WriteUnauthorized(this HttpRequestData req, string message)
+    {
+        HttpResponseData res = req.CreateResponse(HttpStatusCode.Unauthorized);
+        await res.WriteStringAsync(message).NoSync();
+
+        // Short-circuit pipeline by throwing a special exception the worker swallows, or just set invocation result:
+        FunctionContext ctx = req.FunctionContext;
+        ctx.GetInvocationResult().Value = res;
     }
 
     private static ReadOnlySpan<char> Beyond(this ReadOnlySpan<char> span, int count) =>

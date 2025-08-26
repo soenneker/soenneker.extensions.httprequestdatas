@@ -22,7 +22,7 @@ public static class HttpRequestDataExtension
             return false;
 
         // Pick the first non-empty value; avoids LINQ allocations.
-        foreach (var v in values)
+        foreach (string v in values)
         {
             if (v.HasContent())
             {
@@ -39,8 +39,8 @@ public static class HttpRequestDataExtension
             return false;
 
         ReadOnlySpan<char> span = authHeaderBacking.AsSpan().Trim();
-        if (span.Length <= _bearerPrefix.Length ||
-            !span.StartsWith(_bearerPrefix, StringComparison.OrdinalIgnoreCase))
+
+        if (span.Length <= _bearerPrefix.Length || !span.StartsWith(_bearerPrefix, StringComparison.OrdinalIgnoreCase))
             return false;
 
         // Slice after "Bearer " and trim surrounding whitespace.
@@ -48,6 +48,6 @@ public static class HttpRequestDataExtension
         return !token.IsEmpty;
     }
 
-    private static ReadOnlySpan<char> Beyond(this ReadOnlySpan<char> span, int count)
-        => (uint)count <= (uint)span.Length ? span[count..] : ReadOnlySpan<char>.Empty;
+    private static ReadOnlySpan<char> Beyond(this ReadOnlySpan<char> span, int count) =>
+        (uint) count <= (uint) span.Length ? span[count..] : ReadOnlySpan<char>.Empty;
 }

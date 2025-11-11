@@ -41,7 +41,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Microsoft.Azure.Functions.Worker.Core" Version="2.2.0" />
+      <PackageReference Include="Microsoft.Azure.Functions.Worker.Core" Version="2.50.0" />
       <PackageReference Include="Soenneker.Extensions.String" Version="4.0.568" />
       <PackageReference Include="Soenneker.Extensions.Task" Version="4.0.106" />
     </ItemGroup>

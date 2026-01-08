@@ -4,8 +4,6 @@ using System.Net;
 using System.Threading.Tasks;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
-using Soenneker.Extensions.String;
-using Soenneker.Extensions.Task;
 
 namespace Soenneker.Extensions.HttpRequestDatas;
 
@@ -15,7 +13,9 @@ namespace Soenneker.Extensions.HttpRequestDatas;
 public static class HttpRequestDataExtension
 {
     private const int _maxHeaderChars = 8 * 1024;
-    private const string _bearerPrefix = "Bearer ";
+
+    // Use spans so we can stay in Span-land.
+    private static ReadOnlySpan<char> BearerPrefix => "Bearer ".AsSpan();
 
     public static bool TryGetBearer(this HttpRequestData req, out ReadOnlySpan<char> token, out string? authHeaderBacking)
     {
@@ -25,10 +25,10 @@ public static class HttpRequestDataExtension
         if (!req.Headers.TryGetValues("Authorization", out IEnumerable<string>? values) || values is null)
             return false;
 
-        // Pick the first non-empty value; avoids LINQ allocations.
+        // Pick first non-empty value (no LINQ).
         foreach (string v in values)
         {
-            if (v.HasContent())
+            if (!string.IsNullOrWhiteSpace(v))
             {
                 authHeaderBacking = v;
                 break;
@@ -38,30 +38,48 @@ public static class HttpRequestDataExtension
         if (authHeaderBacking is null)
             return false;
 
-        // Optional: guard against huge headers
-        if (authHeaderBacking.Length > _maxHeaderChars)
+        if ((uint)authHeaderBacking.Length > _maxHeaderChars)
             return false;
 
-        ReadOnlySpan<char> span = authHeaderBacking.AsSpan().Trim();
+        ReadOnlySpan<char> span = authHeaderBacking.AsSpan();
 
-        if (span.Length <= _bearerPrefix.Length || !span.StartsWith(_bearerPrefix, StringComparison.OrdinalIgnoreCase))
+        // Fast path: already starts with "Bearer " (common case).
+        if (span.Length > BearerPrefix.Length && span.StartsWith(BearerPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            token = TrimToken(span.Slice(BearerPrefix.Length));
+            return !token.IsEmpty;
+        }
+
+        // Slow path: tolerate leading whitespace or odd formatting.
+        span = span.Trim();
+
+        if (span.Length <= BearerPrefix.Length || !span.StartsWith(BearerPrefix, StringComparison.OrdinalIgnoreCase))
             return false;
 
-        // Slice after "Bearer " and trim surrounding whitespace.
-        token = span.Beyond(_bearerPrefix.Length).Trim();
+        token = TrimToken(span.Slice(BearerPrefix.Length));
         return !token.IsEmpty;
     }
 
-    public static async ValueTask WriteUnauthorized(this HttpRequestData req, string message)
+    public static ValueTask WriteUnauthorized(this HttpRequestData req, string? message)
     {
         HttpResponseData res = req.CreateResponse(HttpStatusCode.Unauthorized);
-        await res.WriteStringAsync(message).NoSync();
 
-        // Short-circuit pipeline by throwing a special exception the worker swallows, or just set invocation result:
-        FunctionContext ctx = req.FunctionContext;
-        ctx.GetInvocationResult().Value = res;
+        System.Threading.Tasks.Task writeTask = res.WriteStringAsync(message ?? string.Empty);
+        req.FunctionContext.GetInvocationResult()
+           .Value = res;
+
+        return new ValueTask(writeTask);
     }
 
-    private static ReadOnlySpan<char> Beyond(this ReadOnlySpan<char> span, int count) =>
-        (uint) count <= (uint) span.Length ? span[count..] : ReadOnlySpan<char>.Empty;
+    private static ReadOnlySpan<char> TrimToken(ReadOnlySpan<char> token)
+    {
+        // Avoid Trim() work if no surrounding whitespace.
+        if (token.IsEmpty)
+            return token;
+
+        if (!char.IsWhiteSpace(token[0]) && !char.IsWhiteSpace(token[^1]))
+            return token;
+
+        return token.Trim();
+    }
 }

@@ -15,7 +15,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\src\Soenneker.Extensions.HttpRequestDatas.csproj" />
+        <ProjectReference Include="..\..\src\Soenneker.Extensions.HttpRequestDatas\Soenneker.Extensions.HttpRequestDatas.csproj" />
     </ItemGroup>
 
     <ItemGroup>

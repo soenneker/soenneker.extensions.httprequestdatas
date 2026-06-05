@@ -17,6 +17,13 @@ public static class HttpRequestDataExtension
     // Use spans so we can stay in Span-land.
     private static ReadOnlySpan<char> BearerPrefix => "Bearer ".AsSpan();
 
+    /// <summary>
+    /// Attempts to get bearer.
+    /// </summary>
+    /// <param name="req">The req.</param>
+    /// <param name="token">The token.</param>
+    /// <param name="authHeaderBacking">The auth header backing.</param>
+    /// <returns>A value indicating whether the operation succeeded.</returns>
     public static bool TryGetBearer(this HttpRequestData req, out ReadOnlySpan<char> token, out string? authHeaderBacking)
     {
         token = default;
@@ -60,6 +67,12 @@ public static class HttpRequestDataExtension
         return !token.IsEmpty;
     }
 
+    /// <summary>
+    /// Writes unauthorized.
+    /// </summary>
+    /// <param name="req">The req.</param>
+    /// <param name="message">The message.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public static ValueTask WriteUnauthorized(this HttpRequestData req, string? message)
     {
         HttpResponseData res = req.CreateResponse(HttpStatusCode.Unauthorized);

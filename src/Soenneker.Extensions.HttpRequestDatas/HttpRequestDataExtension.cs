@@ -18,12 +18,12 @@ public static class HttpRequestDataExtension
     private static ReadOnlySpan<char> BearerPrefix => "Bearer ".AsSpan();
 
     /// <summary>
-    /// Attempts to get bearer.
+    /// Reads a Bearer token from the request authorization header without allocating a replacement header string.
     /// </summary>
-    /// <param name="req">The req.</param>
-    /// <param name="token">The token.</param>
-    /// <param name="authHeaderBacking">The auth header backing.</param>
-    /// <returns>A value indicating whether the operation succeeded.</returns>
+    /// <param name="req">The request data containing the authorization header.</param>
+    /// <param name="token">Receives the token text when a valid Bearer header is found.</param>
+    /// <param name="authHeaderBacking">Receives the backing authorization-header value used by the token span.</param>
+    /// <returns>True when a valid Bearer token was found; otherwise false.</returns>
     public static bool TryGetBearer(this HttpRequestData req, out ReadOnlySpan<char> token, out string? authHeaderBacking)
     {
         token = default;
@@ -68,11 +68,11 @@ public static class HttpRequestDataExtension
     }
 
     /// <summary>
-    /// Writes unauthorized.
+    /// Writes a 401 Unauthorized response with the supplied message.
     /// </summary>
-    /// <param name="req">The req.</param>
-    /// <param name="message">The message.</param>
-    /// <returns>A task that represents the asynchronous operation.</returns>
+    /// <param name="req">The request data containing the authorization header.</param>
+    /// <param name="message">The text written in the unauthorized response.</param>
+    /// <returns>An awaitable that completes after the unauthorized response has been written.</returns>
     public static ValueTask WriteUnauthorized(this HttpRequestData req, string? message)
     {
         HttpResponseData res = req.CreateResponse(HttpStatusCode.Unauthorized);

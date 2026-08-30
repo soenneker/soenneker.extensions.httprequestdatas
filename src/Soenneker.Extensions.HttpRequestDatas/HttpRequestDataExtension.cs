@@ -54,7 +54,7 @@ public static class HttpRequestDataExtension
         if (span.Length > BearerPrefix.Length && span.StartsWith(BearerPrefix, StringComparison.OrdinalIgnoreCase))
         {
             token = TrimToken(span.Slice(BearerPrefix.Length));
-            return !token.IsEmpty;
+            return !token.IsEmpty && !ContainsWhitespace(token);
         }
 
         // Slow path: tolerate leading whitespace or odd formatting.
@@ -64,7 +64,7 @@ public static class HttpRequestDataExtension
             return false;
 
         token = TrimToken(span.Slice(BearerPrefix.Length));
-        return !token.IsEmpty;
+        return !token.IsEmpty && !ContainsWhitespace(token);
     }
 
     /// <summary>
@@ -94,5 +94,16 @@ public static class HttpRequestDataExtension
             return token;
 
         return token.Trim();
+    }
+
+    private static bool ContainsWhitespace(ReadOnlySpan<char> value)
+    {
+        foreach (char character in value)
+        {
+            if (char.IsWhiteSpace(character))
+                return true;
+        }
+
+        return false;
     }
 }
